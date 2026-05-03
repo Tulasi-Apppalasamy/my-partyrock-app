@@ -1,0 +1,146 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Kids Daily Meal Planner with AI Assistant
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Role: !GetAtt AppBedrockRole.Arn
+
+Resources:
+
+  AppBedrockRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: KidsMealPlannerBedrockRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: {Service: lambda.amazonaws.com}
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: BedrockAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                Resource:
+                  - arn:aws:bedrock:*::foundation-model/us.anthropic.claude-sonnet-4-5-20250929-v1:0
+                  - !Sub arn:aws:bedrock:*:${AWS::AccountId}:inference-profile/us.anthropic.claude-sonnet-4-5-20250929-v1:0
+                  - arn:aws:bedrock:*::foundation-model/amazon.nova-canvas-v1:0
+
+  AppApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+      Cors:
+        AllowMethods: "'POST,OPTIONS'"
+        AllowHeaders: "'Content-Type'"
+        AllowOrigin: "'*'"
+
+  DailyMealPlanFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../backend/daily_meal_plan/
+      Handler: run.sh
+      Timeout: 60
+      MemorySize: 256
+      Layers:
+        - !Sub arn:aws:lambda:${AWS::Region}:753240598075:layer:LambdaAdapterLayerX86:27
+      Environment:
+        Variables:
+          AWS_LAMBDA_EXEC_WRAPPER: /opt/bootstrap
+          AWS_LWA_INVOKE_MODE: response_stream
+          PORT: "8080"
+      FunctionUrlConfig:
+        AuthType: NONE
+        InvokeMode: RESPONSE_STREAM
+
+  ShoppingListFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../backend/shopping_list/
+      Handler: run.sh
+      Timeout: 60
+      MemorySize: 256
+      Layers:
+        - !Sub arn:aws:lambda:${AWS::Region}:753240598075:layer:LambdaAdapterLayerX86:27
+      Environment:
+        Variables:
+          AWS_LAMBDA_EXEC_WRAPPER: /opt/bootstrap
+          AWS_LWA_INVOKE_MODE: response_stream
+          PORT: "8080"
+      FunctionUrlConfig:
+        AuthType: NONE
+        InvokeMode: RESPONSE_STREAM
+
+  MealPlanAssistantChatFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../backend/meal_plan_assistant_chat/
+      Handler: run.sh
+      Timeout: 60
+      MemorySize: 256
+      Layers:
+        - !Sub arn:aws:lambda:${AWS::Region}:753240598075:layer:LambdaAdapterLayerX86:27
+      Environment:
+        Variables:
+          AWS_LAMBDA_EXEC_WRAPPER: /opt/bootstrap
+          AWS_LWA_INVOKE_MODE: response_stream
+          PORT: "8080"
+      FunctionUrlConfig:
+        AuthType: NONE
+        InvokeMode: RESPONSE_STREAM
+
+  MealVisualizationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../backend/meal_visualization/
+      Handler: app.handler
+      Timeout: 30
+      MemorySize: 256
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AppApi
+            Path: /visualize
+            Method: POST
+
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: index.html
+
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendBucket
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: s3:GetObject
+            Resource: !Sub ${FrontendBucket.Arn}/*
+
+Outputs:
+  DiagramApiUrl:
+    Value: !Sub https://${AppApi}.execute-api.${AWS::Region}.amazonaws.com/prod
+  DailyMealPlanUrl:
+    Value: !GetAtt DailyMealPlanFunctionUrl.FunctionUrl
+  ShoppingListUrl:
+    Value: !GetAtt ShoppingListFunctionUrl.FunctionUrl
+  MealPlanAssistantChatUrl:
+    Value: !GetAtt MealPlanAssistantChatFunctionUrl.FunctionUrl
+  WebsiteUrl:
+    Value: !GetAtt FrontendBucket.WebsiteURL
+  BucketName:
+    Value: !Ref FrontendBucket
