@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Kids Daily Meal Planner 🍱</title>
+<style>
+  :root{--bg:#f5f0e8;--card:#fff;--accent:#8bc34a;--accent2:#558b2f;--text:#2d2d2d;--muted:#666;--border:#ddd;--radius:12px;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;min-height:100vh;}
+  header{background:var(--accent2);color:#fff;padding:18px 24px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  header h1{font-size:1.4rem;flex:1;}
+  header select{padding:6px 10px;border-radius:6px;border:none;font-size:.9rem;background:#fff;color:var(--text);}
+  .container{max-width:1200px;margin:0 auto;padding:20px;}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  @media(max-width:700px){.grid-2{grid-template-columns:1fr;}}
+  .card{background:var(--card);border-radius:var(--radius);padding:18px;box-shadow:0 2px 8px rgba(0,0,0,.07);}
+  .card-title{font-weight:700;font-size:.95rem;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+  .ai-badge{background:var(--accent);color:#fff;font-size:.7rem;padding:2px 7px;border-radius:20px;}
+  label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:4px;}
+  select,textarea{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:.95rem;background:#fafafa;color:var(--text);outline:none;transition:border .2s;}
+  select:focus,textarea:focus{border-color:var(--accent);}
+  textarea{resize:vertical;min-height:90px;}
+  .btn-row{display:flex;gap:10px;margin:18px 0;flex-wrap:wrap;}
+  button{padding:10px 22px;border:none;border-radius:8px;font-size:.95rem;cursor:pointer;font-weight:600;transition:opacity .2s;}
+  .btn-run{background:var(--accent2);color:#fff;}
+  .btn-reset{background:#e0e0e0;color:var(--text);}
+  button:hover{opacity:.85;}
+  .output-panel{height:340px;overflow-y:auto;background:#fafafa;border:1.5px solid var(--border);border-radius:8px;padding:14px;font-size:.9rem;line-height:1.6;scrollbar-width:thin;scrollbar-color:var(--accent) transparent;}
+  .output-panel::-webkit-scrollbar{width:5px;}
+  .output-panel::-webkit-scrollbar-thumb{background:var(--accent);border-radius:4px;}
+  .spinner{display:none;width:22px;height:22px;border:3px solid var(--border);border-top-color:var(--accent2);border-radius:50%;animation:spin .7s linear infinite;margin:auto;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .error{color:#c62828;font-size:.85rem;margin-top:6px;}
+  .md-line{display:block;animation:fadein .3s;}
+  @keyframes fadein{from{opacity:0}to{opacity:1}}
+  .cursor{display:inline-block;width:2px;height:1em;background:var(--accent2);animation:blink .7s step-end infinite;vertical-align:text-bottom;}
+  @keyframes blink{50%{opacity:0}}
+  h1.md-h1,h2.md-h2,h3.md-h3{margin:.5em 0 .2em;}
+  .md-h1{font-size:1.3em;color:var(--accent2);}
+  .md-h2{font-size:1.15em;color:var(--accent2);}
+  .md-h3{font-size:1.05em;color:var(--accent2);}
+  .md-hr{border:none;border-top:1px solid var(--border);margin:.5em 0;}
+  .md-li{margin-left:1.2em;}
+  .md-code{background:#f0f0f0;padding:1px 5px;border-radius:3px;font-family:monospace;}
+  img.meal-img{width:100%;border-radius:8px;margin-top:8px;}
+  .img-placeholder{height:200px;display:flex;align-items:center;justify-content:center;background:#f0f0f0;border-radius:8px;color:var(--muted);font-size:.9rem;}
+  .chat-messages{min-height:200px;max-height:400px;overflow-y:auto;background:#fafafa;border:1.5px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;display:flex;flex-direction:column;gap:8px;scrollbar-width:thin;scrollbar-color:var(--accent) transparent;}
+  .chat-messages::-webkit-scrollbar{width:5px;}
+  .chat-messages::-webkit-scrollbar-thumb{background:var(--accent);border-radius:4px;}
+  .bubble{padding:10px 14px;border-radius:10px;max-width:85%;font-size:.9rem;line-height:1.5;word-break:break-word;}
+  .bubble.user{background:var(--accent2);color:#fff;align-self:flex-end;}
+  .bubble.assistant{background:#e8f5e9;color:var(--text);align-self:flex-start;}
+  .chat-input-row{display:flex;gap:8px;}
+  .chat-input-row input{flex:1;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;outline:none;}
+  .chat-input-row input:focus{border-color:var(--accent);}
+  .chat-input-row button{background:var(--accent2);color:#fff;padding:10px 16px;border-radius:8px;}
+  section{margin-bottom:20px;}
+</style>
+</head>
+<body>
+
+<header>
+  <span style="font-size:1.8rem">🍱</span>
+  <h1>Kids Daily Meal Planner</h1>
+  <div style="display:flex;align-items:center;gap:8px;">
+    <label for="lang" style="color:#fff;font-size:.85rem;margin:0">🌐</label>
+    <select id="lang" onchange="setLang(this.value)">
+      <option value="en">English</option>
+      <option value="es">Español</option>
+      <option value="fr">Français</option>
+      <option value="de">Deutsch</option>
+      <option value="zh">中文</option>
+      <option value="ja">日本語</option>
+      <option value="ar">العربية</option>
+      <option value="hi">हिन्दी</option>
+    </select>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Inputs row -->
+  <section>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">📅 <span data-i18n="day">Day</span></div>
+        <select id="day">
+          <option>Monday</option><option>Tuesday</option><option>Wednesday</option>
+          <option>Thursday</option><option>Friday</option>
+        </select>
+      </div>
+      <div class="card">
+        <div class="card-title">🥗 <span data-i18n="dietType">Diet Type</span></div>
+        <select id="diet_type">
+          <option>Vegetarian</option><option>Vegan</option>
+          <option>Non-Vegetarian</option><option>Surprise Me</option>
+        </select>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="card">
+      <div class="card-title">🍽️ <span data-i18n="mealTypes">Meal Types to Plan</span></div>
+      <select id="meal_types">
+        <option>All meals</option><option>Breakfast only</option>
+        <option>Lunch only</option><option>Dinner only</option>
+      </select>
+    </div>
+  </section>
+
+  <section>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">⚠️ <span data-i18n="dietaryPrefs">Dietary Preferences and Restrictions</span></div>
+        <textarea id="dietary_prefs" placeholder="e.g. vegetarian, gluten-free, nut allergy, dairy-free, low-carb..."></textarea>
+      </div>
+      <div class="card">
+        <div class="card-title">🌍 <span data-i18n="cuisinePrefs">Cuisine Preferences and Favorite Ingredients</span></div>
+        <textarea id="cuisine_prefs" placeholder="e.g. Italian, Mexican, loves salmon and quinoa, dislikes mushrooms..."></textarea>
+      </div>
+    </div>
+  </section>
+
+  <div class="btn-row">
+    <button class="btn-run" onclick="runAll()" data-i18n="runAll">▶ Run All</button>
+    <button class="btn-reset" onclick="resetAll()" data-i18n="reset">↺ Reset</button>
+  </div>
+
+  <!-- Widget 6: Meal Visualization -->
+  <section>
+    <div class="card">
+      <div class="card-title">✨ <span data-i18n="mealViz">Meal Visualization</span> <span class="ai-badge">AI Image</span></div>
+      <div id="viz-spinner" class="spinner"></div>
+      <div id="viz-error" class="error"></div>
+      <div id="viz-output"><div class="img-placeholder" data-i18n="vizPlaceholder">Generate a meal plan to see the visualization</div></div>
+    </div>
+  </section>
+
+  <!-- Widget 7: Daily Meal Plan -->
+  <section>
+    <div class="card">
+      <div class="card-title">📋 <span data-i18n="mealPlan">Daily Meal Plan</span> <span class="ai-badge">AI</span></div>
+      <div id="plan-spinner" class="spinner"></div>
+      <div id="plan-error" class="error"></div>
+      <div class="output-panel" id="plan-output"></div>
+    </div>
+  </section>
+
+  <!-- Widget 8: Shopping List -->
+  <section>
+    <div class="card">
+      <div class="card-title">🛒 <span data-i18n="shoppingList">Shopping List</span> <span class="ai-badge">AI</span></div>
+      <div id="shop-spinner" class="spinner"></div>
+      <div id="shop-error" class="error"></div>
+      <div class="output-panel" id="shop-output"></div>
+    </div>
+  </section>
+
+  <!-- Widget 9: Chat -->
+  <section>
+    <div class="card">
+      <div class="card-title">💬 <span data-i18n="chatTitle">Meal Plan Assistant Chat</span> <span class="ai-badge">AI Chat</span></div>
+      <div class="chat-messages" id="chat-messages"></div>
+      <div id="chat-error" class="error"></div>
+      <div class="chat-input-row">
+        <input type="text" id="chat-input" placeholder="Ask about your meal plan..." onkeydown="if(event.key==='Enter')sendChat()"/>
+        <button onclick="sendChat()" data-i18n="send">Send</button>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+const STREAM_URLS = {
+  daily_meal_plan: '__URL_DAILY_MEAL_PLAN__',
+  shopping_list: '__URL_SHOPPING_LIST__',
+  meal_plan_assistant_chat: '__URL_MEAL_PLAN_ASSISTANT_CHAT__',
+};
+const DIAGRAM_API = '__DIAGRAM_API_URL__';
+
+// State
+let mealPlanText = '';
+let shoppingListText = '';
+let chatHistory = [];
+
+// i18n
+const LANGS = {
+  en:{day:'Day',dietType:'Diet Type',mealTypes:'Meal Types to Plan',dietaryPrefs:'Dietary Preferences and Restrictions',cuisinePrefs:'Cuisine Preferences and Favorite Ingredients',mealViz:'Meal Visualization',mealPlan:'Daily Meal Plan',shoppingList:'Shopping List',chatTitle:'Meal Plan Assistant Chat',runAll:'▶ Run All',reset:'↺ Reset',send:'Send',vizPlaceholder:'Generate a meal plan to see the visualization'},
+  es:{day:'Día',dietType:'Tipo de Dieta',mealTypes:'Tipos de Comida',dietaryPrefs:'Preferencias y Restricciones Dietéticas',cuisinePrefs:'Preferencias de Cocina e Ingredientes Favoritos',mealViz:'Visualización de Comidas',mealPlan:'Plan de Comidas Diario',shoppingList:'Lista de Compras',chatTitle:'Asistente de Plan de Comidas',runAll:'▶ Ejecutar Todo',reset:'↺ Reiniciar',send:'Enviar',vizPlaceholder:'Genera un plan de comidas para ver la visualización'},
+  fr:{day:'Jour',dietType:'Type de Régime',mealTypes:'Types de Repas',dietaryPrefs:'Préférences et Restrictions Alimentaires',cuisinePrefs:'Préférences Culinaires et Ingrédients Favoris',mealViz:'Visualisation des Repas',mealPlan:'Plan de Repas Quotidien',shoppingList:'Liste de Courses',chatTitle:'Assistant Plan de Repas',runAll:'▶ Tout Lancer',reset:'↺ Réinitialiser',send:'Envoyer',vizPlaceholder:'Générez un plan de repas pour voir la visualisation'},
+  de:{day:'Tag',dietType:'Diättyp',mealTypes:'Mahlzeitentypen',dietaryPrefs:'Ernährungspräferenzen und Einschränkungen',cuisinePrefs:'Küchenpräferenzen und Lieblingszutaten',mealViz:'Mahlzeitenvisualisierung',mealPlan:'Täglicher Mahlzeitenplan',shoppingList:'Einkaufsliste',chatTitle:'Mahlzeitenplan-Assistent',runAll:'▶ Alle Ausführen',reset:'↺ Zurücksetzen',send:'Senden',vizPlaceholder:'Erstellen Sie einen Mahlzeitenplan, um die Visualisierung zu sehen'},
+  zh:{day:'日期',dietType:'饮食类型',mealTypes:'餐食类型',dietaryPrefs:'饮食偏好和限制',cuisinePrefs:'菜系偏好和喜爱食材',mealViz:'餐食可视化',mealPlan:'每日餐食计划',shoppingList:'购物清单',chatTitle:'餐食计划助手',runAll:'▶ 全部运行',reset:'↺ 重置',send:'发送',vizPlaceholder:'生成餐食计划以查看可视化'},
+  ja:{day:'曜日',dietType:'食事タイプ',mealTypes:'食事の種類',dietaryPrefs:'食事の好みと制限',cuisinePrefs:'料理の好みとお気に入りの食材',mealViz:'食事の可視化',mealPlan:'毎日の食事プラン',shoppingList:'買い物リスト',chatTitle:'食事プランアシスタント',runAll:'▶ すべて実行',reset:'↺ リセット',send:'送信',vizPlaceholder:'食事プランを生成して可視化を表示'},
+  ar:{day:'اليوم',dietType:'نوع النظام الغذائي',mealTypes:'أنواع الوجبات',dietaryPrefs:'التفضيلات والقيود الغذائية',cuisinePrefs:'تفضيلات المطبخ والمكونات المفضلة',mealViz:'تصور الوجبات',mealPlan:'خطة الوجبات اليومية',shoppingList:'قائمة التسوق',chatTitle:'مساعد خطة الوجبات',runAll:'▶ تشغيل الكل',reset:'↺ إعادة تعيين',send:'إرسال',vizPlaceholder:'أنشئ خطة وجبات لرؤية التصور'},
+  hi:{day:'दिन',dietType:'आहार प्रकार',mealTypes:'भोजन के प्रकार',dietaryPrefs:'आहार प्राथमिकताएं और प्रतिबंध',cuisinePrefs:'व्यंजन प्राथमिकताएं और पसंदीदा सामग्री',mealViz:'भोजन विज़ुअलाइज़ेशन',mealPlan:'दैनिक भोजन योजना',shoppingList:'खरीदारी सूची',chatTitle:'भोजन योजना सहायक',runAll:'▶ सभी चलाएं',reset:'↺ रीसेट',send:'भेजें',vizPlaceholder:'विज़ुअलाइज़ेशन देखने के लिए भोजन योजना बनाएं'},
+};
+
+function setLang(code) {
+  const t = LANGS[code] || LANGS.en;
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (t[key]) el.textContent = t[key];
+  });
+}
+
+// Markdown renderer per line
+function renderLine(text) {
+  const el = document.createElement('span');
+  el.className = 'md-line';
+  let t = text;
+  if (/^### /.test(t)) { el.className='md-line md-h3'; t=t.slice(4); }
+  else if (/^## /.test(t)) { el.className='md-line md-h2'; t=t.slice(3); }
+  else if (/^# /.test(t)) { el.className='md-line md-h1'; t=t.slice(2); }
+  else if (/^---$/.test(t.trim())) { const hr=document.createElement('hr'); hr.className='md-hr'; return hr; }
+  else if (/^[-*] /.test(t)) { el.className='md-line md-li'; t='• '+t.slice(2); }
+  else if (/^\d+\. /.test(t)) { el.className='md-line md-li'; }
+  // inline
+  t = t.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+       .replace(/\*(.+?)\*/g,'<em>$1</em>')
+       .replace(/`(.+?)`/g,'<code class="md-code">$1</code>');
+  el.innerHTML = t;
+  return el;
+}
+
+async function streamToPanel(url, body, panelId, spinnerId, errorId) {
+  const panel = document.getElementById(panelId);
+  const spinner = document.getElementById(spinnerId);
+  const errEl = document.getElementById(errorId);
+  panel.innerHTML = '';
+  errEl.textContent = '';
+  spinner.style.display = 'block';
+
+  let fullText = '';
+  let cursor = document.createElement('span');
+  cursor.className = 'cursor';
+
+  try {
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body)
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    let currentLine = null;
+
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, {stream: true});
+      const lines = buf.split('\n');
+      buf = lines.pop();
+      for (const line of lines) {
+        if (currentLine) { currentLine.remove(); }
+        if (cursor.parentNode) cursor.remove();
+        const el = renderLine(line);
+        panel.appendChild(el);
+        currentLine = null;
+        fullText += line + '\n';
+      }
+      // partial line
+      if (buf) {
+        if (!currentLine) {
+          currentLine = document.createElement('span');
+          currentLine.className = 'md-line';
+          panel.appendChild(currentLine);
+        }
+        currentLine.textContent = buf;
+        currentLine.appendChild(cursor);
+        panel.scrollTop = panel.scrollHeight;
+      }
+    }
+    // flush remaining
+    if (buf) {
+      if (currentLine) currentLine.remove();
+      if (cursor.parentNode) cursor.remove();
+      panel.appendChild(renderLine(buf));
+      fullText += buf;
+    } else {
+      if (cursor.parentNode) cursor.remove();
+    }
+    panel.scrollTop = panel.scrollHeight;
+  } catch(e) {
+    errEl.textContent = '⚠ ' + e.message;
+  } finally {
+    spinner.style.display = 'none';
+  }
+  return fullText;
+}
+
+function getInputs() {
+  return {
+    day: document.getElementById('day').value,
+    diet_type: document.getElementById('diet_type').value,
+    meal_types: document.getElementById('meal_types').value,
+    dietary_prefs: document.getElementById('dietary_prefs').value,
+    cuisine_prefs: document.getElementById('cuisine_prefs').value,
+  };
+}
+
+async function runMealPlan(inputs) {
+  mealPlanText = await streamToPanel(
+    STREAM_URLS.daily_meal_plan, inputs,
+    'plan-output', 'plan-spinner', 'plan-error'
+  );
+}
+
+async function runShoppingList(inputs) {
+  shoppingListText = await streamToPanel(
+    STREAM_URLS.shopping_list,
+    {...inputs, meal_plan: mealPlanText},
+    'shop-output', 'shop-spinner', 'shop-error'
+  );
+}
+
+async function runVisualization(inputs) {
+  const spinner = document.getElementById('viz-spinner');
+  const errEl = document.getElementById('viz-error');
+  const out = document.getElementById('viz-output');
+  out.innerHTML = '';
+  errEl.textContent = '';
+  spinner.style.display = 'block';
+  try {
+    const resp = await fetch(DIAGRAM_API + '/visualize', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({meal_plan: mealPlanText || `${inputs.meal_types} ${inputs.diet_type} meal for ${inputs.day}`})
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    const img = document.createElement('img');
+    img.className = 'meal-img';
+    img.src = 'data:image/png;base64,' + data.image;
+    img.alt = 'Meal Visualization';
+    out.appendChild(img);
+  } catch(e) {
+    errEl.textContent = '⚠ ' + e.message;
+  } finally {
+    spinner.style.display = 'none';
+  }
+}
+
+async function runAll() {
+  const inputs = getInputs();
+  // Run meal plan first (shopping list depends on it, viz benefits from it)
+  await runMealPlan(inputs);
+  // Then shopping list and visualization in parallel
+  await Promise.all([
+    runShoppingList(inputs),
+    runVisualization(inputs)
+  ]);
+}
+
+function resetAll() {
+  document.getElementById('day').value = 'Monday';
+  document.getElementById('diet_type').value = 'Vegetarian';
+  document.getElementById('meal_types').value = 'All meals';
+  document.getElementById('dietary_prefs').value = '';
+  document.getElementById('cuisine_prefs').value = '';
+  ['plan-output','shop-output'].forEach(id => document.getElementById(id).innerHTML = '');
+  ['plan-error','shop-error','viz-error','chat-error'].forEach(id => document.getElementById(id).textContent = '');
+  document.getElementById('viz-output').innerHTML = '<div class="img-placeholder">Generate a meal plan to see the visualization</div>';
+  document.getElementById('chat-messages').innerHTML = '';
+  document.getElementById('chat-input').value = '';
+  mealPlanText = '';
+  shoppingListText = '';
+  chatHistory = [];
+}
+
+async function sendChat() {
+  const input = document.getElementById('chat-input');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+
+  const messagesEl = document.getElementById('chat-messages');
+  const errEl = document.getElementById('chat-error');
+  errEl.textContent = '';
+
+  // User bubble
+  const userBubble = document.createElement('div');
+  userBubble.className = 'bubble user';
+  userBubble.textContent = msg;
+  messagesEl.appendChild(userBubble);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+
+  // Assistant bubble
+  const aiBubble = document.createElement('div');
+  aiBubble.className = 'bubble assistant';
+  messagesEl.appendChild(aiBubble);
+
+  const inputs = getInputs();
+  const body = {
+    ...inputs,
+    meal_plan: mealPlanText,
+    shopping_list: shoppingListText,
+    history: chatHistory,
+    message: msg
+  };
+
+  let replyText = '';
+  let cursor = document.createElement('span');
+  cursor.className = 'cursor';
+  aiBubble.appendChild(cursor);
+
+  try {
+    const resp = await fetch(STREAM_URLS.meal_plan_assistant_chat, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body)
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      const text = decoder.decode(value, {stream: true});
+      replyText += text;
+      cursor.remove();
+      aiBubble.textContent = replyText;
+      aiBubble.appendChild(cursor);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+    cursor.remove();
+  } catch(e) {
+    errEl.textContent = '⚠ ' + e.message;
+    cursor.remove();
+  }
+
+  chatHistory.push({role: 'user', content: msg});
+  chatHistory.push({role: 'assistant', content: replyText});
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+</script>
+</body>
+</html>
